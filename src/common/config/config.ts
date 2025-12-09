@@ -6,6 +6,7 @@ const env = () => ({
   db_host: process.env.DB_HOST,
   db_port: process.env.DB_PORT,
   db_name: process.env.DB_NAME,
+  db_ssl: process.env.DB_SSL === 'true',
   google_client_id: process.env.GOOGLE_CLIENT_ID,
   google_client_secret: process.env.GOOGLE_CLIENT_SECRET,
   google_callback_url: process.env.GOOGLE_CALLBACK_URL,
