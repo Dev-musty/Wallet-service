@@ -8,6 +8,6 @@ import { ApiKey } from './Entity/api-key.entity';
   imports: [TypeOrmModule.forFeature([ApiKey])],
   controllers: [ApiKeyController],
   providers: [ApiKeyService],
-  exports: [TypeOrmModule],
+  exports: [ApiKeyService, TypeOrmModule],
 })
 export class ApiKeyModule {}

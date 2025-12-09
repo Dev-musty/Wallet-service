@@ -8,9 +8,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GoogleStrategy } from './Services/google.service';
 import { JwtStrategy } from './Services/JWT.service';
 
+import { ApiKeyStrategy } from './Services/api-key.strategy';
+import { ApiKeyModule } from '../api-key/api-key.module';
+
 @Module({
   imports: [
     UserModule,
+    ApiKeyModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -24,6 +28,6 @@ import { JwtStrategy } from './Services/JWT.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, GoogleStrategy, JwtStrategy],
+  providers: [AuthService, GoogleStrategy, JwtStrategy, ApiKeyStrategy],
 })
 export class AuthModule {}
