@@ -1,9 +1,39 @@
 import { plainToInstance } from 'class-transformer';
-import { IsNumber, validateSync } from 'class-validator';
+import { IsNumber, IsString, validateSync } from 'class-validator';
 
 class EnvVariable {
   @IsNumber()
   PORT: number;
+
+  @IsString()
+  DB_TYPE: string;
+
+  @IsString()
+  DB_USERNAME: string;
+
+  @IsString()
+  DB_PASSWORD: string;
+
+  @IsString()
+  DB_HOST: string;
+
+  @IsString()
+  DB_PORT: string;
+
+  @IsString()
+  DB_NAME: string;
+
+  @IsString()
+  GOOGLE_CLIENT_ID: string;
+
+  @IsString()
+  GOOGLE_CLIENT_SECRET: string;
+
+  @IsString()
+  GOOGLE_CALLBACK_URL: string;
+
+  @IsString()
+  JWT_SECRET: string;
 }
 
 export const validate = (configs: Record<string, unknown>) => {
