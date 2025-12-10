@@ -29,7 +29,10 @@ export class AuthService {
       const newUser = this.userRepository.create(details);
       return await this.userRepository.save(newUser);
     } catch (error) {
-      throw new InternalServerErrorException('Error validating user');
+      console.error('Error in validateOAuthLogin:', error);
+      throw new InternalServerErrorException(
+        `Error validating user: ${error.message}`,
+      );
     }
   }
 
