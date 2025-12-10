@@ -2,8 +2,8 @@ import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn({ name: 'user_id' })
-  id: number;
+  @PrimaryGeneratedColumn('uuid', { name: 'user_id' })
+  id: string;
 
   @Column()
   fullName: string;

@@ -59,7 +59,7 @@ export class ApiKeyService {
       permissions: dto.permissions,
       expires_at: this.calculateExpiry(dto.expiry),
       key: hashedKey,
-      user: user,
+      user: { id: user.id } as User,
     });
 
     await this.apiKeyRepository.save(apiKey);
@@ -79,6 +79,10 @@ export class ApiKeyService {
       throw new NotFoundException('API Key not found.');
     }
 
+    if (oldKey.expires_at > new Date()) {
+      throw new BadRequestException('Cannot rollover an active key.');
+    }
+
     // Deactivate old key
     oldKey.is_active = false;
     await this.apiKeyRepository.save(oldKey);
@@ -92,7 +96,7 @@ export class ApiKeyService {
       permissions: oldKey.permissions,
       expires_at: this.calculateExpiry(dto.expiry),
       key: hashedKey,
-      user: user,
+      user: { id: user.id } as User,
     });
 
     await this.apiKeyRepository.save(newKey);

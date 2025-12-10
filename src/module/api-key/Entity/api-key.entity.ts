@@ -10,8 +10,8 @@ import { User } from '../../user/Entity/user.entity';
 
 @Entity()
 export class ApiKey {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   key: string;
