@@ -119,4 +119,30 @@ export class ApiKeyService {
     }
     return null;
   }
+
+  async listApiKeys(user: User) {
+    return this.apiKeyRepository.find({
+      where: { user: { id: user.id } },
+      order: { created_at: 'DESC' },
+    });
+  }
+
+  async revokeApiKey(user: User, id: string) {
+    const key = await this.apiKeyRepository.findOne({
+      where: { id, user: { id: user.id } },
+    });
+
+    if (!key) {
+      throw new NotFoundException('API Key not found.');
+    }
+
+    if (!key.is_active) {
+      throw new BadRequestException('API Key is already inactive.');
+    }
+
+    key.is_active = false;
+    await this.apiKeyRepository.save(key);
+
+    return { message: 'API Key revoked successfully.' };
+  }
 }

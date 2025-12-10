@@ -62,3 +62,50 @@ export function RolloverApiKeyDocs() {
     ApiResponse({ status: 400, description: 'API Key is not yet expired.' }),
   );
 }
+
+export function ListApiKeysDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'List all API Keys',
+      description: 'Retrieves a list of all API keys for the authenticated user.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'List of API Keys retrieved successfully.',
+      schema: {
+        example: [
+          {
+            id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+            name: 'Checkout Service',
+            permissions: ['deposit', 'read'],
+            expires_at: '2025-12-31T23:59:59.999Z',
+            is_active: true,
+            created_at: '2024-01-01T00:00:00.000Z',
+            key: 'hashed_key_value...',
+          },
+        ],
+      },
+    }),
+  );
+}
+
+export function RevokeApiKeyDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Revoke an API Key',
+      description: 'Deactivates an API key so it can no longer be used.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'API Key revoked successfully.',
+      schema: {
+        example: {
+          message: 'API Key revoked successfully.',
+        },
+      },
+    }),
+    ApiResponse({ status: 404, description: 'API Key not found.' }),
+    ApiResponse({ status: 400, description: 'API Key is already inactive.' }),
+  );
+}
+

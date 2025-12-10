@@ -198,28 +198,20 @@ export class WalletService {
       throw new NotFoundException('Transaction not found');
     }
 
+    let currentStatus = transaction.status.toString();
+
     // If still pending, verify with Paystack
     if (transaction.status === TransactionStatus.PENDING) {
       try {
         const response = await this.paystack.transaction.verify(reference);
-        if (response.status && response.data.status === 'success') {
-          await this.fulfillTransaction(reference);
-          // Refresh transaction data
-          const updatedTransaction = await this.transactionRepository.findOne({
-            where: { reference },
-          });
+        if (response.status && response.data) {
+          currentStatus = response.data.status; // Use live status
 
-          if (updatedTransaction) {
-            return {
-              reference: updatedTransaction.reference,
-              status: updatedTransaction.status,
-              amount: updatedTransaction.amount,
-              created_at: updatedTransaction.created_at,
-            };
+          // If failed or abandoned, we can safely update the DB to FAILED
+          if (currentStatus === 'failed' || currentStatus === 'abandoned') {
+            transaction.status = TransactionStatus.FAILED;
+            await this.transactionRepository.save(transaction);
           }
-        } else if (response.status && response.data.status === 'failed') {
-          transaction.status = TransactionStatus.FAILED;
-          await this.transactionRepository.save(transaction);
         }
       } catch (error) {
         throw new InternalServerErrorException(
@@ -230,7 +222,7 @@ export class WalletService {
 
     return {
       reference: transaction.reference,
-      status: transaction.status,
+      status: currentStatus,
       amount: transaction.amount,
       created_at: transaction.created_at,
     };
