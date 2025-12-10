@@ -10,11 +10,13 @@ import { JwtStrategy } from './Services/JWT.service';
 
 import { ApiKeyStrategy } from './Services/api-key.strategy';
 import { ApiKeyModule } from '../api-key/api-key.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
   imports: [
     UserModule,
     ApiKeyModule,
+    WalletModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

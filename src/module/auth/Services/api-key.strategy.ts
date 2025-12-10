@@ -22,7 +22,9 @@ export class ApiKeyStrategy extends PassportStrategy(
             }
             return done(null, key);
           })
-          .catch((err) => done(err, null));
+          .catch((err) => {
+            done(err, null);
+          });
       },
     );
   }

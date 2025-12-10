@@ -13,18 +13,23 @@ export class PermissionsGuard implements CanActivate {
     if (!requiredPermissions) {
       return true;
     }
-    const { user } = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest();
+    const user = request.user;
 
-    // If user is not an API Key (e.g. JWT user), maybe allow or deny?
-    // Assuming API Key entity has 'permissions' array.
-    if (!user || !user.permissions) {
-      // If it's a regular user, maybe they are allowed?
-      // For now, let's strict check for permissions property.
+    if (!user) {
       return false;
     }
 
-    return requiredPermissions.some((permission) =>
+    // If user is not an API Key (e.g. JWT user), allow access
+    // API Key users will have a 'permissions' property
+    if (!user.permissions) {
+      return true;
+    }
+
+    const hasPermission = requiredPermissions.some((permission) =>
       user.permissions.includes(permission),
     );
+
+    return hasPermission;
   }
 }

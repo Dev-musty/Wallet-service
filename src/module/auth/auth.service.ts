@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../user/Entity/user.entity';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
+import { WalletService } from '../wallet/wallet.service';
 
 @Injectable()
 export class AuthService {
@@ -10,6 +11,7 @@ export class AuthService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private jwtService: JwtService,
+    private readonly walletService: WalletService,
   ) {}
 
   async validateOAuthLogin(details: {
@@ -27,7 +29,12 @@ export class AuthService {
       }
 
       const newUser = this.userRepository.create(details);
-      return await this.userRepository.save(newUser);
+      const savedUser = await this.userRepository.save(newUser);
+
+      // Create wallet for new user
+      await this.walletService.createWallet(savedUser);
+
+      return savedUser;
     } catch (error) {
       console.error('Error in validateOAuthLogin:', error);
       throw new InternalServerErrorException(

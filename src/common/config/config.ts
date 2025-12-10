@@ -12,6 +12,7 @@ const env = () => ({
   google_callback_url: process.env.GOOGLE_CALLBACK_URL,
   jwt_secret: process.env.JWT_SECRET,
   jwt_expiration: process.env.JWT_EXPIRATION || '1d',
+  paystack_key: process.env.PAYSTACK_KEY,
 });
 
 export default env;

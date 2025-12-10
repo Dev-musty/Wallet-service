@@ -34,6 +34,9 @@ class EnvVariable {
 
   @IsString()
   JWT_SECRET: string;
+
+  @IsString()
+  PAYSTACK_KEY: string;
 }
 
 export const validate = (configs: Record<string, unknown>) => {
