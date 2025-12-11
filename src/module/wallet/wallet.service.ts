@@ -92,7 +92,6 @@ export class WalletService {
       .createHmac('sha512', secret)
       .update(JSON.stringify(body))
       .digest('hex');
-    console.log(hash);
     return hash === signature;
   }
 
@@ -153,7 +152,6 @@ export class WalletService {
 
     const { event, data } = body;
     const reference = data.reference;
-    console.log(body);
     if (event === 'charge.success') {
       if (data.status === 'success') {
         await this.fulfillTransaction(reference);
@@ -161,7 +159,6 @@ export class WalletService {
         const reason = data.gateway_response || 'Transaction failed';
         await this.markTransactionFailed(data.reference, reason);
       }
-      console.log(data.status);
     }
 
     return { status: true };
@@ -184,16 +181,33 @@ export class WalletService {
   }
 
   // Initiate transaction
-  async initiateDeposit(user: User, dto: InitiateDepositDto) {
+  async initiateDeposit(
+    user: User,
+    dto: InitiateDepositDto,
+    idempotencyKey?: string,
+  ) {
     const amountInKobo = dto.amount * 100;
 
     try {
+      // If an idempotency key is provided, return existing initialization if present
+      if (idempotencyKey) {
+        const existing = await this.transactionRepository.findOne({
+          where: { idempotency_key: idempotencyKey },
+        });
+        if (existing) {
+          return {
+            message: 'Transaction already existing',
+            reference: existing.reference,
+            authorization_url: existing.auth_url,
+          };
+        }
+      }
+
       const response = (await this.paystack.transaction.initialize({
         email: user.email,
         amount: amountInKobo,
         currency: 'NGN',
       })) as PaystackInitResponse;
-      console.log(response.status);
       if (!response.status) {
         throw new InternalServerErrorException(
           'Paystack initialization failed',
@@ -209,7 +223,7 @@ export class WalletService {
         wallet = await this.createWallet(user);
       }
 
-      // Save pending transaction
+      // Save pending transaction (include idempotency key + auth URL)
       const transaction = this.transactionRepository.create({
         reference: response.data.reference,
         type: TransactionType.DEPOSIT,
@@ -217,11 +231,11 @@ export class WalletService {
         status: TransactionStatus.PENDING,
         description: 'Wallet Deposit',
         wallet: wallet,
+        idempotency_key: idempotencyKey ?? undefined,
+        auth_url: response.data?.authorization_url ?? undefined,
       });
 
       await this.transactionRepository.save(transaction);
-      const tx = await this.transactionRepository.find();
-      console.log(tx);
 
       return response.data;
     } catch (error) {
@@ -256,7 +270,6 @@ export class WalletService {
     try {
       const response = await this.paystack.transaction.verify(reference);
       const paystackStatus = response.data.status;
-      console.log(response.data);
       // Update DB if Paystack says it's done but our DB didn't know yet
       if (paystackStatus === 'success') {
         transaction.status = TransactionStatus.SUCCESS;

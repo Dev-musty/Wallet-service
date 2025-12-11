@@ -61,6 +61,12 @@ export function InitiateDepositDocs() {
       description:
         'Initializes a transaction with Paystack and returns the authorization URL. Accessible by JWT users and API Keys with "deposit" permission.',
     }),
+    ApiHeader({
+      name: 'Idempotency-Key',
+      description:
+        'Optional UUID to make the initialization idempotent. If you retry the request with the same key the server will return the original initialization response instead of creating a new transaction.',
+      required: false,
+    }),
     ApiSecurity('x-api-key'),
     ApiBody({ type: InitiateDepositDto }),
     ApiResponse({
@@ -71,6 +77,7 @@ export function InitiateDepositDocs() {
           authorization_url: 'https://checkout.paystack.com/access_code',
           access_code: 'access_code',
           reference: 'reference',
+          idempotency_key: 'a1b2c3d4-...-uuid',
         },
       },
     }),

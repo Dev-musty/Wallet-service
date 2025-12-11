@@ -5,6 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 import { Wallet } from './wallet.entity';
 
@@ -27,6 +28,13 @@ export class Transaction {
   @Column({ unique: true })
   reference: string;
 
+  @Index({ unique: true })
+  @Column({ type: 'varchar', nullable: true })
+  idempotency_key?: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  auth_url?: string;
+
   @Column({ type: 'enum', enum: TransactionType })
   type: TransactionType;
 
@@ -40,8 +48,8 @@ export class Transaction {
   })
   status: TransactionStatus;
 
-  @Column({ nullable: true })
-  description: string;
+  @Column({ type: 'text', nullable: true })
+  description?: string;
 
   @ManyToOne(() => Wallet, (wallet) => wallet.transactions)
   @JoinColumn({ name: 'wallet_id' })

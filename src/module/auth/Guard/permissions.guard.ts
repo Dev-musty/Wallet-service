@@ -4,7 +4,9 @@ import { Reflector } from '@nestjs/core';
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
-
+  /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+  /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+  /* eslint-disable @typescript-eslint/no-unsafe-call */
   canActivate(context: ExecutionContext): boolean {
     const requiredPermissions = this.reflector.get<string[]>(
       'permissions',
@@ -20,8 +22,6 @@ export class PermissionsGuard implements CanActivate {
       return false;
     }
 
-    // If user is not an API Key (e.g. JWT user), allow access
-    // API Key users will have a 'permissions' property
     if (!user.permissions) {
       return true;
     }

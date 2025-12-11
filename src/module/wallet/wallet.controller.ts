@@ -48,9 +48,13 @@ export class WalletController {
   @UseGuards(CompositeAuthGuard, PermissionsGuard)
   @Permissions('deposit')
   @InitiateDepositDocs()
-  async initiateDeposit(@Req() req, @Body() dto: InitiateDepositDto) {
+  async initiateDeposit(
+    @Req() req,
+    @Body() dto: InitiateDepositDto,
+    @Headers('Idempotency-Key') idempotencyKey?: string,
+  ) {
     const user = req.user.user ? req.user.user : req.user;
-    return this.walletService.initiateDeposit(user, dto);
+    return this.walletService.initiateDeposit(user, dto, idempotencyKey);
   }
 
   @Get('deposit/:reference/status')
