@@ -16,4 +16,7 @@ export class User {
 
   @Column({ default: () => 'NOW()' })
   createdAT: Date;
+
+  @Column({ nullable: true })
+  refreshToken: string;
 }

@@ -12,6 +12,7 @@ import { ApiKeyStrategy } from './Services/api-key.strategy';
 import { ApiKeyModule } from '../api-key/api-key.module';
 import { WalletModule } from '../wallet/wallet.module';
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 @Module({
   imports: [
     UserModule,

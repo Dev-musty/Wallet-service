@@ -37,6 +37,9 @@ class EnvVariable {
 
   @IsString()
   PAYSTACK_KEY: string;
+
+  @IsString()
+  SIG_SECRET: string;
 }
 
 export const validate = (configs: Record<string, unknown>) => {

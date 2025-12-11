@@ -19,24 +19,25 @@ export function HandleWebhookDocs() {
     }),
     ApiHeader({
       name: 'x-paystack-signature',
-      description: 'HMAC SHA512 signature of the request body. Use "confirmer" to bypass verification for testing.',
+      description:
+        'HMAC SHA512 signature of the request body. Use "confirmer" to bypass verification for testing.',
       required: true,
       schema: {
         default: '',
       },
     }),
-    ApiBody({
-      schema: {
-        type: 'object',
-        example: {
-          event: 'charge.success',
-          data: {
-            reference: 'wsbn0rdgyw',
-          },
-        },
-      },
-      description: 'Paystack event payload',
-    }),
+    // ApiBody({
+    //   schema: {
+    //     type: 'object',
+    //     example: {
+    //       event: 'charge.success',
+    //       data: {
+    //         reference: 'wsbn0rdgyw',
+    //       },
+    //     },
+    //   },
+    //   description: 'Paystack event payload',
+    // }),
     ApiResponse({
       status: 200,
       description: 'Webhook processed successfully.',

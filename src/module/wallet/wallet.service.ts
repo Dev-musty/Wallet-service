@@ -19,7 +19,30 @@ import { InitiateDepositDto } from './Dto/initiate-deposit.dto';
 import { TransferDto } from './Dto/transfer.dto';
 
 import * as crypto from 'crypto';
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 
+// Define what the Paystack body looks like
+interface PaystackWebhookBody {
+  event: string;
+  data: {
+    reference: string;
+    status: string;
+    gateway_response?: string;
+    amount?: number;
+    [key: string]: any; // Allow other extra properties safely
+  };
+}
+interface PaystackInitResponse {
+  status: boolean;
+  message: string;
+  data: {
+    authorization_url: string;
+    access_code: string;
+    reference: string;
+  };
+}
 @Injectable()
 export class WalletService {
   paystack: any;
@@ -48,16 +71,16 @@ export class WalletService {
   }
 
   private generateWalletNumber(): string {
-    // Generate a random 10-digit number
+    // Generate a random 10-digit number for wallet
     return Math.floor(1000000000 + Math.random() * 9000000000).toString();
   }
 
   // Verify Webhook Signature
   private verifyWebhookSignature(signature: string, body: any): boolean {
-    // Allow 'confirmer' to bypass signature check for testing purposes
-    if (signature === 'confirmer') {
-      return true;
-    }
+    // const sig = this.configService.get<string>('sig_secret');
+    // if (signature === sig) {
+    //   return true;
+    // }
 
     const secret = this.configService.get<string>('paystack_key');
     if (!secret) {
@@ -69,13 +92,13 @@ export class WalletService {
       .createHmac('sha512', secret)
       .update(JSON.stringify(body))
       .digest('hex');
+    console.log(hash);
     return hash === signature;
   }
 
-  // Helper to credit wallet safely using a transaction
+  // credit wallet using a transaction
   private async fulfillTransaction(reference: string) {
     return await this.dataSource.transaction(async (manager) => {
-      // 1. Find transaction WITHOUT relations first to lock it
       const transaction = await manager.findOne(Transaction, {
         where: { reference },
         lock: { mode: 'pessimistic_write' },
@@ -88,11 +111,6 @@ export class WalletService {
       if (transaction.status === TransactionStatus.SUCCESS) {
         return { message: 'Transaction already processed' };
       }
-
-      // 2. Load the wallet relation separately
-      // We need the wallet ID from the transaction to find the wallet
-      // Since we didn't load relations, we might need to fetch it or rely on lazy loading if configured.
-      // Better approach: Fetch transaction with loadRelationIds to get wallet ID safely.
 
       const transactionWithWalletId = await manager.findOne(Transaction, {
         where: { id: transaction.id },
@@ -112,7 +130,7 @@ export class WalletService {
       // Credit wallet
       // Now we use the wallet ID we found
       const wallet = await manager.findOne(Wallet, {
-        where: { id: transactionWithWalletId.wallet as any }, // TypeORM returns ID when loadRelationIds is true
+        where: { id: transactionWithWalletId.wallet as any },
         lock: { mode: 'pessimistic_write' },
       });
 
@@ -128,18 +146,41 @@ export class WalletService {
   }
 
   // Handle Webhook
-  async handleWebhook(signature: string, body: any) {
+  async handleWebhook(signature: string, body: PaystackWebhookBody) {
     if (!this.verifyWebhookSignature(signature, body)) {
       throw new InternalServerErrorException('Invalid signature');
     }
 
     const { event, data } = body;
-
+    const reference = data.reference;
+    console.log(body);
     if (event === 'charge.success') {
-      await this.fulfillTransaction(data.reference);
+      if (data.status === 'success') {
+        await this.fulfillTransaction(reference);
+      } else if (data.status === 'failed') {
+        const reason = data.gateway_response || 'Transaction failed';
+        await this.markTransactionFailed(data.reference, reason);
+      }
+      console.log(data.status);
     }
 
     return { status: true };
+  }
+  // failed transaction
+  private async markTransactionFailed(reference: string, reason: string) {
+    const transaction = await this.transactionRepository.findOne({
+      where: { reference },
+    });
+
+    // If found and technically still pending, mark as failed
+    if (transaction && transaction.status === TransactionStatus.PENDING) {
+      transaction.status = TransactionStatus.FAILED;
+      transaction.description = `Failed: ${reason}`;
+      await this.transactionRepository.save(transaction);
+      console.log(
+        `Transaction ${reference} marked as FAILED. Reason: ${reason}`,
+      );
+    }
   }
 
   // Initiate transaction
@@ -147,12 +188,12 @@ export class WalletService {
     const amountInKobo = dto.amount * 100;
 
     try {
-      const response = await this.paystack.transaction.initialize({
+      const response = (await this.paystack.transaction.initialize({
         email: user.email,
         amount: amountInKobo,
         currency: 'NGN',
-      });
-
+      })) as PaystackInitResponse;
+      console.log(response.status);
       if (!response.status) {
         throw new InternalServerErrorException(
           'Paystack initialization failed',
@@ -179,6 +220,8 @@ export class WalletService {
       });
 
       await this.transactionRepository.save(transaction);
+      const tx = await this.transactionRepository.find();
+      console.log(tx);
 
       return response.data;
     } catch (error) {
@@ -193,39 +236,54 @@ export class WalletService {
     const transaction = await this.transactionRepository.findOne({
       where: { reference },
     });
-
+    console.log(transaction?.reference);
     if (!transaction) {
       throw new NotFoundException('Transaction not found');
     }
 
-    let currentStatus = transaction.status.toString();
-
-    // If still pending, verify with Paystack
-    if (transaction.status === TransactionStatus.PENDING) {
-      try {
-        const response = await this.paystack.transaction.verify(reference);
-        if (response.status && response.data) {
-          currentStatus = response.data.status; // Use live status
-
-          // If failed or abandoned, we can safely update the DB to FAILED
-          if (currentStatus === 'failed' || currentStatus === 'abandoned') {
-            transaction.status = TransactionStatus.FAILED;
-            await this.transactionRepository.save(transaction);
-          }
-        }
-      } catch (error) {
-        throw new InternalServerErrorException(
-          `Verification failed: ${error.message}`,
-        );
-      }
+    if (
+      transaction.status === TransactionStatus.SUCCESS ||
+      transaction.status === TransactionStatus.FAILED
+    ) {
+      return {
+        reference: transaction.reference,
+        status: transaction.status,
+        amount: transaction.amount,
+        created_at: transaction.created_at,
+      };
     }
 
-    return {
-      reference: transaction.reference,
-      status: currentStatus,
-      amount: transaction.amount,
-      created_at: transaction.created_at,
-    };
+    try {
+      const response = await this.paystack.transaction.verify(reference);
+      const paystackStatus = response.data.status;
+      console.log(response.data);
+      // Update DB if Paystack says it's done but our DB didn't know yet
+      if (paystackStatus === 'success') {
+        transaction.status = TransactionStatus.SUCCESS;
+        await this.transactionRepository.save(transaction);
+      } else if (
+        paystackStatus === 'failed' ||
+        paystackStatus === 'abandoned'
+      ) {
+        transaction.status = TransactionStatus.FAILED;
+        await this.transactionRepository.save(transaction);
+      }
+
+      return {
+        reference: transaction.reference,
+        status: paystackStatus,
+        amount: transaction.amount,
+        created_at: transaction.created_at,
+      };
+    } catch (error) {
+      console.error(`Paystack verification check failed: ${error.message}`);
+      return {
+        reference: transaction.reference,
+        status: transaction.status, // Return 'PENDING'
+        amount: transaction.amount,
+        created_at: transaction.created_at,
+      };
+    }
   }
 
   // Transfer funds
@@ -233,7 +291,6 @@ export class WalletService {
     const { wallet_number, amount } = dto;
 
     return await this.dataSource.transaction(async (manager) => {
-      // 1. Get Sender Wallet (with lock)
       const senderWallet = await manager.findOne(Wallet, {
         where: { user: { id: sender.id } },
         lock: { mode: 'pessimistic_write' },
@@ -250,10 +307,6 @@ export class WalletService {
       if (Number(senderWallet.balance) < amount) {
         throw new BadRequestException('Insufficient funds');
       }
-
-      // 2. Get Recipient Wallet (with lock)
-      // We need to fetch the wallet first with lock, THEN fetch the user relation separately
-      // to avoid "FOR UPDATE cannot be applied to the nullable side of an outer join"
       const recipientWallet = await manager.findOne(Wallet, {
         where: { wallet_number },
         lock: { mode: 'pessimistic_write' },
@@ -273,14 +326,14 @@ export class WalletService {
         throw new InternalServerErrorException('Recipient user not found');
       }
 
-      // 3. Perform Transfer
+      // Transfer
       senderWallet.balance = Number(senderWallet.balance) - amount;
       recipientWallet.balance = Number(recipientWallet.balance) + amount;
 
       await manager.save(senderWallet);
       await manager.save(recipientWallet);
 
-      // 4. Create Transaction Records
+      // Transaction Records
       const debitTransaction = manager.create(Transaction, {
         reference: `TRF-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         type: TransactionType.TRANSFER,
@@ -292,7 +345,7 @@ export class WalletService {
 
       const creditTransaction = manager.create(Transaction, {
         reference: `RCV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        type: TransactionType.DEPOSIT, // Using DEPOSIT to indicate credit
+        type: TransactionType.DEPOSIT,
         amount: amount,
         status: TransactionStatus.SUCCESS,
         description: `Transfer from ${sender.email}`,

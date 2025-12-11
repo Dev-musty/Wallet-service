@@ -3,13 +3,14 @@ import { PassportStrategy } from '@nestjs/passport';
 import { HeaderAPIKeyStrategy } from 'passport-headerapikey';
 import { ApiKeyService } from '../../api-key/api-key.service';
 
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return*/
 @Injectable()
 export class ApiKeyStrategy extends PassportStrategy(
   HeaderAPIKeyStrategy as any,
   'api-key',
 ) {
   constructor(private apiKeyService: ApiKeyService) {
-    // @ts-ignore
     super(
       { header: 'x-api-key', prefix: '' },
       false,

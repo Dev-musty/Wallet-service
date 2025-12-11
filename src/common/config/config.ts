@@ -13,6 +13,7 @@ const env = () => ({
   jwt_secret: process.env.JWT_SECRET,
   jwt_expiration: process.env.JWT_EXPIRATION || '1d',
   paystack_key: process.env.PAYSTACK_KEY,
+  sig_secret: process.env.SIG_SECRET,
 });
 
 export default env;

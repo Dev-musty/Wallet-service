@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { WalletService } from '../wallet/wallet.service';
 
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 @Injectable()
 export class AuthService {
   constructor(
@@ -45,8 +46,31 @@ export class AuthService {
 
   async login(user: User) {
     const payload = { email: user.email, sub: user.id };
+    const access_token = this.jwtService.sign(payload);
+    const refresh_token = this.jwtService.sign(payload, { expiresIn: '7d' });
+    user.refreshToken = refresh_token;
+    await this.userRepository.save(user);
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token,
+      refresh_token,
+    };
+  }
+
+  async refreshToken(userId: string, refreshToken: string) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user || user.refreshToken !== refreshToken) {
+      throw new InternalServerErrorException('Invalid refresh token');
+    }
+    const payload = { email: user.email, sub: user.id };
+    const access_token = this.jwtService.sign(payload);
+    const new_refresh_token = this.jwtService.sign(payload, {
+      expiresIn: '7d',
+    });
+    user.refreshToken = new_refresh_token;
+    await this.userRepository.save(user);
+    return {
+      access_token,
+      refresh_token: new_refresh_token,
     };
   }
 }

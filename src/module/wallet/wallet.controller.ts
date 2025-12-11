@@ -10,7 +10,6 @@ import {
   Param,
 } from '@nestjs/common';
 import { WalletService } from './wallet.service';
-import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { InitiateDepositDto } from './Dto/initiate-deposit.dto';
 import { TransferDto } from './Dto/transfer.dto';
@@ -26,7 +25,9 @@ import {
 } from './Docs/wallet.docs';
 
 import { CompositeAuthGuard } from '../auth/Guard/composite.guard';
-
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 @ApiTags('Wallet')
 @Controller('wallet')
 export class WalletController {
